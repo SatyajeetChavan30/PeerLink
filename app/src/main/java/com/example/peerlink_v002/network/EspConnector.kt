@@ -23,14 +23,12 @@ class EspConnector(private val context: Context) {
         val specifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             WifiNetworkSpecifier.Builder()
                 .setSsidPattern(PatternMatcher("PeerLink", PatternMatcher.PATTERN_PREFIX))
+                .setWpa2Passphrase("peerlink123")
                 .build()
         } else {
-            // Fallback for older devices (technically not needed if minSdk=29, but good practice)
-            // But strict requirement says minSdk=29 for Specifier.
-            // If minSdk < 29, we'd use WifiManager.enableNetwork which is deprecated.
-            // Assuming minSdk >= 29 as established.
             WifiNetworkSpecifier.Builder()
                 .setSsidPattern(PatternMatcher("PeerLink", PatternMatcher.PATTERN_PREFIX))
+                .setWpa2Passphrase("peerlink123")
                 .build()
         }
 

@@ -1,12 +1,11 @@
 /*
  * PeerLink Relay Firmware for ESP32
  *
- * Hardware: ESP32 DevKit V1 (ESP-WROOM-32)
+ * Hardware: ESP-WROOM-32
  * Features:
- * - Wi-Fi Access Point (SSID: PeerLink_XXXX)
+ * - Wi-Fi Access Point (SSID: PeerLink_Relay_XXXX)
  * - UDP Relay on Port 8888
  * - Client Discovery & Tracking
- * - LED Status (GPIO 2)
  *
  * Dependencies:
  * - ArduinoJson (Install via Library Manager)
@@ -50,14 +49,13 @@ void setup() {
   mySSID = "PeerLink_" + macStr;
 
   WiFi.mode(WIFI_AP);
-  // Using default password "peerlink123"
+  // Using default password "peerlink123" - Android app is configured for this
   WiFi.softAP(mySSID.c_str(), "peerlink123");
 
   Serial.println("-------------------------");
   Serial.println("PeerLink Relay Online");
   Serial.println("SSID: " + mySSID);
   Serial.println("IP:   " + WiFi.softAPIP().toString());
-  Serial.println("Password: peerlink123");
   Serial.println("-------------------------");
 
   // 2. Setup UDP
@@ -84,12 +82,17 @@ void loop() {
       packetBuffer[len] = 0;
     }
 
+    // Serial.printf("Received: %s\n", packetBuffer);
     handlePacket(String(packetBuffer), udp.remoteIP());
     digitalWrite(LED_PIN, LOW);
   }
 }
 
 void broadcastPresence() {
+  // Send to Broadcast Address
+  // In AP mode, broadcast is usually X.X.X.255
+  // But strictly, 255.255.255.255 works too.
+
   StaticJsonDocument<256> doc;
   doc["type"] = "presence";
   doc["from"] = "ESP_RELAY";
@@ -119,24 +122,31 @@ void handlePacket(String json, IPAddress senderIP) {
   // Register Client
   if (from != "null" && from.length() > 0) {
     String payload = doc["payload"] | "";
+    // If packet is presence from phone, payload might be name
     String name = (type == "presence")
                       ? payload
                       : (clients.count(from) ? clients[from].name : "Unknown");
 
     clients[from] = {senderIP, millis(), name};
+    // Serial.println("Registered/Updated: " + from);
   }
 
   // Handle Logic
   if (type == "chat") {
+    // Forwarding
     if (to == "BROADCAST") {
+      // Send to all except sender
       for (auto const &[id, info] : clients) {
         if (id != from) {
           forwardPacket(json, info.ip);
         }
       }
     } else {
+      // Send to specific
       if (clients.count(to)) {
         forwardPacket(json, clients[to].ip);
+      } else {
+        Serial.println("Target not found: " + to);
       }
     }
   } else if (type == "get_clients") {
@@ -151,6 +161,7 @@ void forwardPacket(String json, IPAddress ip) {
 }
 
 void sendClientList(IPAddress targetIp) {
+  // Format: "id,name;id,name"
   String payload = "";
   for (auto const &[id, info] : clients) {
     if (payload.length() > 0)
@@ -173,9 +184,12 @@ void sendClientList(IPAddress targetIp) {
 }
 
 void cleanupClients() {
+  // Remove timed out clients
+  // Manual iterator needed for map removal
   auto it = clients.begin();
   while (it != clients.end()) {
     if (millis() - it->second.lastSeen > CLIENT_TIMEOUT) {
+      Serial.println("Client Timeout: " + it->first);
       it = clients.erase(it);
     } else {
       ++it;

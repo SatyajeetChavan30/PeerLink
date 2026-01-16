@@ -58,11 +58,10 @@ fun ChatScreen(
                     .weight(1f)
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
-                reverseLayout = true // Show newest at bottom (if list is reversed) or normal
+                reverseLayout = true,
+                contentPadding = PaddingValues(vertical = 16.dp)
             ) {
-                // Assuming messages are newest last. If reverseLayout=true, list should be newest first.
-                // Let's assume list is chronological (Oldest -> Newest).
-                // So normal layout.
+                // List is ordered newest-first from DB, reverseLayout=true shows it correctly at the bottom.
                 items(messages) { msg ->
                     ChatBubble(msg)
                     Spacer(modifier = Modifier.height(8.dp))

@@ -18,7 +18,7 @@ data class MessageEntity(
 // DAO
 @Dao
 interface MessageDao {
-    @Query("SELECT * FROM messages WHERE senderId = :peerId OR receiverId = :peerId ORDER BY timestamp ASC")
+    @Query("SELECT * FROM messages WHERE senderId = :peerId OR receiverId = :peerId ORDER BY timestamp DESC")
     fun getMessagesForPeer(peerId: String): Flow<List<MessageEntity>>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
